@@ -1672,15 +1672,33 @@
         // Cek localStorage, jika ada sesi aktif ambil datanya, jika tidak jadikan null
         let currentUser = JSON.parse(localStorage.getItem('walkaUser')) || null;
 
-        // --- HELPER UNTUK MENGAMBIL URL DARI RUMUS =IMAGE() ---
+        // --- HELPER UNTUK MENGAMBIL URL DARI RUMUS =IMAGE() & GOOGLE DRIVE ---
         function extractImageUrl(input) {
             if (!input) return '';
-            // Jika data di spreadsheet tersimpan sebagai rumus =IMAGE("url")
-            const match = input.match(/^=IMAGE\(['"]([^'"]+)['"]\)/i);
-            if (match && match[1]) {
-                return match[1]; // Mengembalikan URL asli Google Drive-nya
+            
+            let url = input;
+            
+            // 1. Ekstrak dari rumus =IMAGE("url") jika data berupa rumus
+            const matchFormula = input.match(/^=IMAGE\(['"]([^'"]+)['"]\)/i);
+            if (matchFormula && matchFormula[1]) {
+                url = matchFormula[1];
             }
-            return input; // Jika bukan rumus, kembalikan apa adanya (seperti URL biasa atau Base64)
+
+            // 2. Konversi Link Google Drive biasa menjadi Direct Image Link
+            // Menangkap format: https://drive.google.com/file/d/ID_GAMBAR/view
+            const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+            if (driveMatch && driveMatch[1]) {
+                return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
+            }
+
+            // Menangkap format: https://drive.google.com/open?id=ID_GAMBAR
+            const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+            if (driveOpenMatch && driveOpenMatch[1]) {
+                return `https://drive.google.com/uc?export=view&id=${driveOpenMatch[1]}`;
+            }
+
+            // Jika bukan format GDrive (misal Base64 atau URL web lain), kembalikan apa adanya
+            return url; 
         }
 
         // Fungsi Helper Generate Data Dummy dari 1 Okt - 29 Okt 2026 (5 Data / Tanggal)
@@ -3037,7 +3055,7 @@
            function saveBase64ToDriveAndGetImageUrl(base64Data, fileName) {
                if(!base64Data || !base64Data.includes('base64,')) return base64Data;
                
-               var folder = DriveApp.getFolderById("1Qt-MfKCMGfCW5wy6MMr-aOwnE1fIZoNh");
+               var folder = DriveApp.getFolderById("ID_FOLDER_GOOGLE_DRIVE_ANDA_DISINI");
                var splitBase = base64Data.split(',');
                var contentType = splitBase[0].split(':')[1].split(';')[0];
                var blob = Utilities.newBlob(Utilities.base64Decode(splitBase[1]), contentType, fileName);
@@ -3052,7 +3070,7 @@
            ----------------------------------------------------------------------------
         */
         
-        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyGJicRjvyb7Z_eB2sSeccJBToVx3dLZZiBgh8BURYkvqIfMrS4lvpWI4ykTzZAlgQm/exec';
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyt5pbKd3AmcecQiW3p0r0SP_n1xJjbJ7N-j5aJ3_na0y1SahBvLVT_WTFpvr8yK5TA/exec';
 
         function callBackend(action, data = {}) {
             return new Promise((resolve, reject) => {
